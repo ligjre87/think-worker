@@ -34,13 +34,26 @@ class Application extends App
             $this->beginMem  = memory_get_usage();
             $this->db->clearQueryTimes();
 
-            $response = $this->http->run();
+            $pathinfo = ltrim(strpos($_SERVER['REQUEST_URI'], '?') ? strstr($_SERVER['REQUEST_URI'], '?', true) : $_SERVER['REQUEST_URI'], '/');
+
+            $this->request
+                ->setPathinfo($pathinfo)
+                ->withInput($GLOBALS['HTTP_RAW_POST_DATA']);
+
+            while (ob_get_level() > 1) {
+                ob_end_clean();
+            }
 
             ob_start();
+            $response = $this->http->run();
+            $content  = ob_get_clean();
+
+            ob_start();
+
             $response->send();
             $this->http->end($response);
 
-            $content = ob_get_clean() ?: '';
+            $content .= ob_get_clean() ?: '';
 
             $this->httpResponseCode($response->getCode());
 
@@ -49,7 +62,11 @@ class Application extends App
                 WorkerHttp::header($name . (!is_null($val) ? ':' . $val : ''));
             }
 
-            $connection->send($content);
+            if (strtolower($_SERVER['HTTP_CONNECTION']) === "keep-alive") {
+                $connection->send($content);
+            } else {
+                $connection->close($content);
+            }
         } catch (HttpException | \Exception | \Throwable $e) {
             $this->exception($connection, $e);
         }
@@ -59,14 +76,14 @@ class Application extends App
      * 是否运行在命令行下
      * @return bool
      */
-    public function runningInConsole()
+    public function runningInConsole(): bool
     {
         return false;
     }
 
     protected function httpResponseCode($code = 200)
     {
-        WorkerHttp::header('HTTP/1.1', true, $code);
+        WorkerHttp::responseCode($code);
     }
 
     protected function exception($connection, $e)

@@ -112,7 +112,7 @@ class Worker extends Command
         // 设置文件监控
         if (DIRECTORY_SEPARATOR !== '\\' && (App::isDebug() || !empty($this->config['file_monitor']))) {
             $interval = $this->config['file_monitor_interval'] ?? 2;
-            $paths    = $this->config['file_monitor_path'] ?? [App::getAppPath(), App::getConfigPath()];
+            $paths    = !empty($this->config['file_monitor_path']) ? $this->config['file_monitor_path'] : [App::getAppPath(), App::getConfigPath()];
             $worker->setMonitor($interval, $paths);
             unset($this->config['file_monitor'], $this->config['file_monitor_interval'], $this->config['file_monitor_path']);
         }
@@ -135,7 +135,7 @@ class Worker extends Command
         $worker->start();
     }
 
-    protected function getHost($default = '0.0.0.0')
+    protected function getHost(string $default = '0.0.0.0')
     {
         if ($this->input->hasOption('host')) {
             $host = $this->input->getOption('host');
@@ -146,7 +146,7 @@ class Worker extends Command
         return $host;
     }
 
-    protected function getPort($default = '2346')
+    protected function getPort(string $default = '2346')
     {
         if ($this->input->hasOption('port')) {
             $port = $this->input->getOption('port');
